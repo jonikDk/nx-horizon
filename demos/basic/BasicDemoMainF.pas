@@ -50,6 +50,11 @@ begin
   // text event can be dispatched from background thread
   // and MainAsync mode will assure that event handler
   // ProcessTextEvent runs in the context of the main thread
+
+  // форма подписки на текстовые и информационные события
+  // текстовое событие может быть отправлено из фонового потока
+  // и режим MainAsync гарантирует, что обработчик событий
+  // ProcessTextEvent запускается в контексте основного потока
   TextSub := NxHorizon.Instance.Subscribe<TTextEvent>(MainAsync, ProcessTextEvent);
   DataSub := NxHorizon.Instance.Subscribe<TDataEvent>(Sync, ProcessDataEvent);
 end;
@@ -58,11 +63,19 @@ procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   // This is asynchronous subscription and we need to
   // wait for processing of all dispatched events
+
+  // Это асинхронная подписка, и нам нужно
+  // ждать обработки всех отправленных событий
   NxHorizon.Instance.WaitAndUnsubscribe(TextSub);
   // This is synchronous subscription and code that triggers it
   // runs in the context of the main thread so we
   // can just unsubscribe without waiting as event handler
   // cannot run on already destroyed form
+
+  // Это синхронная подписка и код, который ее запускает
+  // выполняется в контексте основного потока, поэтому мы
+  // можно просто отписаться, не дожидаясь обработчика события
+  // который не может работать на уже уничтоженной форме
   NxHorizon.Instance.Unsubscribe(DataSub);
 end;
 

@@ -46,14 +46,17 @@ uses
 
 type
   ///	<summary>
-  ///	  Generic subscription method - event handler
+  ///	  Общий метод подписки — обработчик событий (Generic subscription method - event handler)
   ///	</summary>
   ///	<typeparam name="T">
-  ///	  Wrapped event type - supports all types
+  ///	  Обернутый тип события — поддерживает все типы (Wrapped event type - supports all types)
   ///	</typeparam>
   TNxEventMethod<T> = procedure(const aEvent: T) of object;
 
   ///	<summary>
+  ///   Это объявление специализированного метода, которое используется для хранения методов подписки
+  ///   При вызове методов диспетчеризация событий гарантирует, что фактический тип события соответствует
+  ///   типу события метода.
   ///	  This is specialized method declaration that is used for storing subscription methods
   ///	  When invoking methods, event dispatching makes sure that actual event type matches
   ///	  method event type.
@@ -61,47 +64,54 @@ type
   TNxEventMethod = TNxEventMethod<TObject>;
 
   ///	<summary>
-  ///	  Event delivery options
+  ///	  Варианты доставки событий (Event delivery options)
   ///	</summary>
   ///	<remarks>
   ///	  <para>
+  ///	    Sync и MainSync являются БЛОКИРУИЩИМИ операциями, и обработчик событий будет выполняться немедленно.
+  ///	    в контексте текущего потока или синхронизировано с основным потоком.
   ///	    Sync and MainSync are BLOCKING operations and event handler will execute immediately
   ///	    in the context of the current thread or synchronized with the main thread.
   ///	  </para>
   ///	  <para>
-  ///	    This will block dispatching other events using same bus instance until event handler completes. 
+  ///	    Это заблокирует отправку других событий с использованием того же экземпляра шины, пока не завершится обработчик событий.
+  ///	    Не используйте (или используйте экономно только для коротких исполнений) в экземпляре global Horizon.
+  ///	    This will block dispatching other events using same bus instance until event handler completes.
   ///     Don't use (or use sparingly only for short executions) on global horizon instance.
   ///	  </para>
   ///	</remarks>
   TNxHorizonDelivery = (
     ///	<summary>
-    ///	  Run synchronously on current thread - BLOCKING
+    ///	  Запускается синхронно в текущем потоке — БЛОКИРУЮЩИЙ (Run synchronously on current thread - BLOCKING)
     ///	</summary>
     Sync,
 
     ///	<summary>
-    ///	  Run asynchronously in random background thread
+    ///	  Запускается асинхронно в случайном фоновом потоке (Run asynchronously in random background thread)
     ///	</summary>
     Async,
 
     ///	<summary>
-    ///	  Run synchronously on main thread - BLOCKING
+    ///	  Запускается синхронно в основном потоке — БЛОКИРУЮЩИЙ (Run synchronously on main thread - BLOCKING)
     ///	</summary>
     MainSync,
 
     ///	<summary>
-    ///	  Run asynchronously on main thread
+    ///	  Запускается асинхронно в основном потоке (Run asynchronously on main thread)
     ///	</summary>
     MainAsync
   );
 
   ///	<summary>
   ///	  <para>
-  ///	    Public waitable subscription interface used for checking whether subscription is active 
+  ///	    Интерфейс открытой подписки с ожиданием, используемый для проверки активности подписки и отмены
+  ///	    Public waitable subscription interface used for checking whether subscription is active
   ///	    and canceling
   ///	  </para>
   ///	  <para>
-  ///	    This interface is basically cancelation token + countdown event for protecting 
+  ///	    Этот интерфейс в основном представляет собой токен отмены + событие обратного отсчета для защиты
+  ///	    текущих обработчиков событий
+  ///	    This interface is basically cancelation token + countdown event for protecting
   ///     currently running event handlers
   ///	  </para>
   ///	</summary>
@@ -118,6 +128,8 @@ type
   end;
 
   ///	<summary>
+  ///	  Подписка на событие - открытый интерфейс действует как токен отмены, защищенные (protected) поля сохраняют
+  ///	  данные приватной подписки, необходимые для отправки событий.
   ///	  Event subscription - public interface acts as cancelation token, protected fields hold
   ///	  private subscription data necessary for dispatching events.
   ///	</summary>
@@ -139,11 +151,15 @@ type
     procedure WaitFor;
 
     ///	<summary>
-    ///	  Cancel subscription. Can be safely called multiple times.
+    ///	  Отменить подписку. Можно безопасно вызывать несколько раз.
+    ///   Cancel subscription. Can be safely called multiple times.
     ///	</summary>
     procedure Cancel;
 
     ///	<summary>
+    ///	  Метод подписки может быть вызван, только если подписка активна (не отменена). Это
+    ///	  предотвращает проблемы с асинхронной отправкой событий, когда подписка и связанные с ней
+    ///	  метод больше недействителен (живой)
     ///	  Subscription method can be invoked only if subscription is active (not canceled) This
     ///	  prevents issues with asynchronous event dispatching, when subscription and its associated
     ///	  method are no longer valid (alive)
@@ -151,7 +167,7 @@ type
     property IsActive: Boolean read GetIsActive;
 
     ///	<summary>
-    ///	  Opposite of IsActive property
+    ///	  Противоположный свойству IsActive (Opposite of IsActive property)
     ///	</summary>
     property IsCanceled: Boolean read GetIsCanceled;
   end;
@@ -159,7 +175,7 @@ type
   TNxHorizon = class
   protected
     ///	<summary>
-    ///	  Lock for protecting fSubscriptions
+    ///	  Блокировка для защиты fSubscriptions (Lock for protecting fSubscriptions)
     ///	</summary>
     fLock: IReadWriteSync;
     fSubscriptions: TDictionary<PTypeInfo, TList<INxEventSubscription>>;
@@ -169,23 +185,26 @@ type
     destructor Destroy; override;
 
     ///	<summary>
-    ///	  Subscribe observer method
+    ///	  Подписаться на метод наблюдателя /Subscribe observer method
     ///	</summary>
     ///	<typeparam name="T">
-    ///	  Wrapped event type - supports all types
+    ///	  Обернутый тип события — поддерживает все типы (Wrapped event type - supports all types)
     ///	</typeparam>
     ///	<param name="aDelivery">
-    ///	  Subscription delivery option
+    ///	  Вариант доставки по подписке (Subscription delivery option)
     ///	</param>
     ///	<param name="aObserver">
-    ///	  Observer method
+    ///	  Метод наблюдателя (Observer method)
     ///	</param>
     function Subscribe<T>(aDelivery: TNxHorizonDelivery; aObserver: TNxEventMethod<T>): INxEventSubscription;
 
     ///	<summary>
-    ///	  Unsubscribe - subscription will be automatically canceled
+    ///	  Отписаться - подписка будет автоматически отменена (Unsubscribe - subscription will be automatically canceled)
     ///	</summary>
     ///	<remarks>
+    ///	  Unsubscribe нельзя вызвать из синхронно отправленных событий, потому что это изменит
+    ///	  сбор подписчиков во время итерации. Используйте UnsubscribeAsync в таких
+    ///	  сценарии.
     ///	  Unsubscribe cannot be called from synchronously dispatched events because it will modify
     ///	  collection of subscribers while it is being iterated. Use UnsubscribeAsync in such
     ///	  scenarios.
@@ -193,14 +212,17 @@ type
     procedure Unsubscribe(const aSubscription: INxEventSubscription); overload;
 
     ///	<summary>
-    ///	  Asynchronously unsubscribe observer method
+    ///	  Асинхронно отписаться от метода наблюдателя (Asynchronously unsubscribe observer method)
     ///	</summary>
     procedure UnsubscribeAsync(const aSubscription: INxEventSubscription); overload;
 
     ///	<summary>
-    ///	  Wait for and unsubscribe - subscription will be automatically canceled
+    ///	  Подождите и отпишитесь - подписка будет автоматически отменена (Wait for and unsubscribe - subscription will be automatically canceled)
     ///	</summary>
     ///	<remarks>
+    ///	  WaitUnsubscribe нельзя вызывать из синхронно отправленных событий, потому что это изменит
+    ///	  сбор подписчиков во время итерации. Используйте WaitUnsubscribeAsync в таких
+    ///	  сценариях.
     ///	  WaitUnsubscribe cannot be called from synchronously dispatched events because it will modify
     ///	  collection of subscribers while it is being iterated. Use WaitUnsubscribeAsync in such
     ///	  scenarios.
@@ -208,17 +230,19 @@ type
     procedure WaitAndUnsubscribe(const aSubscription: INxEventSubscription);
 
     ///	<summary>
+    ///	  Подождите и асинхронно отпишитесь - подписка будет автоматически отменена
     ///	  Wait for and asynchronously unsubscribe - subscription will be automatically canceled
     ///	</summary>
     procedure WaitAndUnsubscribeAsync(const aSubscription: INxEventSubscription);
 
     ///	<summary>
+    ///	  Публикация события - доставка зависит от параметров доставки подписки
     ///	  Post event - delivery depends on subscription delivery options
     ///	</summary>
     procedure Post<T>(const aEvent: T);
 
     ///	<summary>
-    ///	  Send event - delivery parameter overrides subscription delivery
+    ///	  Отправить событие — параметр доставки переопределяет доставку по подписке (Send event - delivery parameter overrides subscription delivery)
     ///	</summary>
     procedure Send<T>(const aEvent: T; aDelivery: TNxHorizonDelivery);
   end;
@@ -262,7 +286,7 @@ type
     class procedure WaitAndUnsubscribeAsync(const aHorizon: INxHorizon; const aSubscription: INxEventSubscription); static;
     class procedure UnsubscribeAsync(const aHorizon: INxHorizon; const aSubscription: INxEventSubscription); static;
     ///	<summary>
-    ///	  Thread safe, default (global) Horizon instance.
+    ///	  Потокобезопасный экземпляр Horizon по умолчанию (глобальный). (Thread safe, default (global) Horizon instance.)
     ///	</summary>
     class property Instance: TNxHorizon read fInstance;
   end;
@@ -273,11 +297,13 @@ type
   end;
 
   ///	<summary>
+  ///	  Общий класс событий. Поддерживает все типы. Если Value является объектом, он принадлежит и освобождается
+  ///	  в событии (или по событию).
   ///	  Generic event class. Supports all types. If Value is an object it is owned and released by
   ///	  the event.
   ///	</summary>
   ///	<typeparam name="T">
-  ///	  Wrapped event Value type - supports all types
+  ///	  Обернутое событие Тип значения — поддерживает все типы (Wrapped event Value type - supports all types)
   ///	</typeparam>
   TNxEvent<T> = class(TInterfacedObject, INxEvent<T>)
   protected

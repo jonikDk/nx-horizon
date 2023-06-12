@@ -10,11 +10,9 @@ object MainForm: TMainForm
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
-  OldCreateOrder = True
   Position = poScreenCenter
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  PixelsPerInch = 96
   TextHeight = 13
   object Panel1: TPanel
     Left = 0
@@ -23,6 +21,7 @@ object MainForm: TMainForm
     Height = 41
     Align = alTop
     TabOrder = 0
+    ExplicitWidth = 636
     object TextBtn: TButton
       Left = 104
       Top = 10
@@ -50,6 +49,8 @@ object MainForm: TMainForm
     Align = alClient
     ScrollBars = ssVertical
     TabOrder = 1
+    ExplicitWidth = 636
+    ExplicitHeight = 438
   end
   object Timer1: TTimer
     OnTimer = Timer1Timer
